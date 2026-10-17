@@ -19,6 +19,22 @@ function textResponse(body, status = 200) {
   })
 }
 
+// 根据字符串生成确定性颜色（HSL）
+function colorFromString(str) {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  const hue = Math.abs(hash) % 360
+  return `hsl(${hue}, 65%, 50%)`
+}
+
+// 生成 SVG 字母图标，返回 data URL
+function generateLetterTile(letter, color) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" rx="12" fill="${color}"/><text x="32" y="46" font-family="Arial,sans-serif" font-size="36" font-weight="bold" fill="white" text-anchor="middle">${letter}</text></svg>`
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`
+}
+
 export default {
   async fetch(request) {
     // 处理 CORS 预检请求
@@ -39,6 +55,7 @@ export default {
 
     const format = searchParams.get('format') || 'json'
     const meta = searchParams.get('meta') || 'all'
+    const color = searchParams.get('color') || ''
 
     // ---- 路由逻辑（替代 vercel.json rewrites）----
     let url = searchParams.get('url')
@@ -67,10 +84,11 @@ export default {
     }
 
     // ---- 缓存逻辑 ----
-    // 用目标 URL + meta + format 生成缓存键，不同路径格式访问同一目标 URL 共享缓存
-    const cacheKey = new Request(`https://cache.local/${meta}/${format}/${encodeURIComponent(url)}`, {
-      method: 'GET',
-    })
+    // 用目标 URL + meta + format + color 生成缓存键
+    const cacheKey = new Request(
+      `https://cache.local/${meta}/${format}/${encodeURIComponent(url)}/${encodeURIComponent(color)}`,
+      { method: 'GET' },
+    )
     const cache = caches.default
 
     // 检查缓存
@@ -136,11 +154,16 @@ export default {
         absoluteIcon = icon.startsWith('http') ? icon : new URL(icon, url).href
       }
 
-      // 如果没有找到 icon，则返回 hostname 大写的首字母
+      // 如果没有找到 icon，生成带颜色的 SVG 字母图标
       if (!absoluteIcon) {
         const hostname = new URL(url).hostname
         const mainDomain = hostname.replace(/^www\./, '').split('.')[0]
-        absoluteIcon = mainDomain ? mainDomain[0].toUpperCase() : ''
+        const letter = mainDomain ? mainDomain[0].toUpperCase() : ''
+        if (letter) {
+          // 优先使用自定义颜色，否则根据域名生成确定性颜色
+          const tileColor = color || colorFromString(mainDomain)
+          absoluteIcon = generateLetterTile(letter, tileColor)
+        }
       }
 
       const result = {
