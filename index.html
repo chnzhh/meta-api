@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meta API</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 80px auto; padding: 0 20px; color: #333; }
+    h1 { font-size: 1.6rem; }
+    code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; }
+    pre { background: #f6f8fa; padding: 16px; border-radius: 8px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h1>Meta API</h1>
+  <p>Extract webpage metadata (title, description, icon) from any URL.</p>
+  <h3>Usage</h3>
+  <pre>GET /https://example.com
+GET /?url=https://example.com&amp;meta=title&amp;format=text</pre>
+  <h3>Parameters</h3>
+  <ul>
+    <li><code>url</code> — target URL (or pass as path)</li>
+    <li><code>meta</code> — all | title | description | icon | url (default: all)</li>
+    <li><code>format</code> — json | text (default: json)</li>
+  </ul>
+</body>
+</html>
