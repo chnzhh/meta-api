@@ -2,6 +2,9 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
 }
 
+// 缓存有效期（秒）
+const CACHE_TTL = 3600 // 1 小时
+
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -63,6 +66,25 @@ export default {
       )
     }
 
+    // ---- 缓存逻辑 ----
+    // 用目标 URL + meta + format 生成缓存键，不同路径格式访问同一目标 URL 共享缓存
+    const cacheKey = new Request(`https://cache.local/${meta}/${format}/${encodeURIComponent(url)}`, {
+      method: 'GET',
+    })
+    const cache = caches.default
+
+    // 检查缓存
+    const cachedResponse = await cache.match(cacheKey)
+    if (cachedResponse) {
+      // 返回缓存，添加 X-Cache: HIT 头
+      const headers = new Headers(cachedResponse.headers)
+      headers.set('X-Cache', 'HIT')
+      return new Response(cachedResponse.body, {
+        status: cachedResponse.status,
+        headers,
+      })
+    }
+
     try {
       // 先发送 HEAD 请求检查 Content-Type
       let contentType = ''
@@ -114,10 +136,9 @@ export default {
         absoluteIcon = icon.startsWith('http') ? icon : new URL(icon, url).href
       }
 
-      // ★ 新增：如果没有找到 icon，则返回 hostname 大写的首字母
+      // 如果没有找到 icon，则返回 hostname 大写的首字母
       if (!absoluteIcon) {
         const hostname = new URL(url).hostname
-        // 取主域名的第一段（去掉 www. 前缀），返回大写首字母
         const mainDomain = hostname.replace(/^www\./, '').split('.')[0]
         absoluteIcon = mainDomain ? mainDomain[0].toUpperCase() : ''
       }
@@ -134,17 +155,32 @@ export default {
         meta === 'all' ? null : result[meta] !== undefined ? String(result[meta]) : ''
 
       // 根据 format 参数选择输出格式
+      let responseToCache
+
       if (format === 'text') {
         const body = meta === 'all' ? JSON.stringify(result, null, 2) : singleValue
-        return textResponse(body)
+        responseToCache = textResponse(body)
+      } else if (meta === 'all') {
+        responseToCache = jsonResponse(result)
+      } else {
+        responseToCache = jsonResponse({ [meta]: singleValue })
       }
 
-      // JSON 输出（默认）
-      if (meta === 'all') {
-        return jsonResponse(result)
+      // 添加缓存头并写入缓存（仅缓存成功响应）
+      if (responseToCache.status === 200) {
+        const headers = new Headers(responseToCache.headers)
+        headers.set('X-Cache', 'MISS')
+        headers.set('Cache-Control', `public, max-age=${CACHE_TTL}`)
+        const cached = new Response(responseToCache.body, {
+          status: responseToCache.status,
+          headers,
+        })
+        // 异步写入缓存，不阻塞响应
+        cache.put(cacheKey, cached.clone())
+        return cached
       }
 
-      return jsonResponse({ [meta]: singleValue })
+      return responseToCache
     } catch (err) {
       return jsonResponse(
         { error: 'Failed to fetch or parse the webpage', detail: String(err) },
