@@ -56,6 +56,7 @@ export default {
     const format = searchParams.get('format') || 'json'
     const meta = searchParams.get('meta') || 'all'
     const color = searchParams.get('color') || ''
+    const letter = searchParams.get('letter') || ''
 
     // ---- 路由逻辑（替代 vercel.json rewrites）----
     let url = searchParams.get('url')
@@ -84,9 +85,9 @@ export default {
     }
 
     // ---- 缓存逻辑 ----
-    // 用目标 URL + meta + format + color 生成缓存键
+    // 用目标 URL + meta + format + color + letter 生成缓存键
     const cacheKey = new Request(
-      `https://cache.local/${meta}/${format}/${encodeURIComponent(url)}/${encodeURIComponent(color)}`,
+      `https://cache.local/${meta}/${format}/${encodeURIComponent(url)}/${encodeURIComponent(color)}/${encodeURIComponent(letter)}`,
       { method: 'GET' },
     )
     const cache = caches.default
@@ -158,11 +159,12 @@ export default {
       if (!absoluteIcon) {
         const hostname = new URL(url).hostname
         const mainDomain = hostname.replace(/^www\./, '').split('.')[0]
-        const letter = mainDomain ? mainDomain[0].toUpperCase() : ''
-        if (letter) {
+        // 优先使用 letter 参数，否则取域名首字母
+        const tileLetter = letter || (mainDomain ? mainDomain[0].toUpperCase() : '')
+        if (tileLetter) {
           // 优先使用自定义颜色，否则根据域名生成确定性颜色
           const tileColor = color || colorFromString(mainDomain)
-          absoluteIcon = generateLetterTile(letter, tileColor)
+          absoluteIcon = generateLetterTile(tileLetter, tileColor)
         }
       }
 
