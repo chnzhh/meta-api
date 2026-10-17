@@ -50,6 +50,7 @@ npx wrangler dev
 - 📄 提取网页 `title`、`description`、`icon`
 - 🎨 无 favicon 时自动生成彩色 SVG 字母图标（根据域名哈希生成确定性颜色）
 - 🎯 支持自定义图标颜色（`color` 参数）
+- 🔤 支持强制指定字母（`letter` 参数）
 - ⚡ 边缘缓存（Cache API，1 小时 TTL）
 - 📦 JSON / 纯文本两种输出格式
 - 🔗 路径或查询参数两种调用方式
@@ -78,6 +79,7 @@ curl https://webmeta.pages.dev/https://example.com
 | `meta` | `all` | `all` `title` `description` `icon` `url` | 返回的字段 |
 | `format` | `json` | `json` `text` | 输出格式 |
 | `color` | 无 | CSS 颜色值 | 自定义字母图标背景色 |
+| `letter` | 无 | 任意字母 | 强制指定字母图标的字母（默认取域名首字母） |
 
 ## 调用方式
 
@@ -156,6 +158,14 @@ curl "https://webmeta.pages.dev/example.com?color=blue"
 curl "https://webmeta.pages.dev/example.com?color=hsl(270%2C%2065%25%2C%2050%25)"
 ```
 
+### 自定义字母
+
+```bash
+# 强制使用指定字母（不取域名首字母）
+curl "https://webmeta.pages.dev/example.com?letter=X"
+curl "https://webmeta.pages.dev/example.com?letter=A&color=%23ff5733"
+```
+
 ### 在 HTML 中使用
 
 ```html
@@ -177,7 +187,7 @@ curl -I https://webmeta.pages.dev/https://example.com
 
 - 缓存有效期：**1 小时**
 - 仅缓存 **200 成功响应**，错误响应不缓存
-- 缓存键包含 `url + meta + format + color`，不同参数组合分别缓存
+- 缓存键包含 `url + meta + format + color + letter`，不同参数组合分别缓存
 
 ## JavaScript 调用
 
@@ -192,9 +202,9 @@ const title = await fetch(
   'https://webmeta.pages.dev/?url=https://example.com&meta=title&format=text'
 ).then(r => r.text())
 
-// 获取带自定义颜色的图标
+// 获取带自定义颜色和字母的图标
 const icon = await fetch(
-  'https://webmeta.pages.dev/?url=https://example.com&meta=icon&format=text&color=%23ff5733'
+  'https://webmeta.pages.dev/?url=https://example.com&meta=icon&format=text&color=%23ff5733&letter=X'
 ).then(r => r.text())
 
 document.querySelector('img').src = icon
